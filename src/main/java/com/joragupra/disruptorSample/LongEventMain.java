@@ -10,17 +10,15 @@ public class LongEventMain  {
 
     public static void main( String[] args ) throws Exception {
         Executor executor = Executors.newCachedThreadPool();
-        LongEventFactory factory = new LongEventFactory();
         int bufferSize = 1024;
-        Disruptor<LongEvent> disruptor = new Disruptor<>(factory, bufferSize, executor);
-        disruptor.handleEventsWith(new LongEventHandler());
+        Disruptor<LongEvent> disruptor = new Disruptor<>(() -> new LongEvent(), bufferSize, executor);
+        disruptor.handleEventsWith((event, sequence, endOfBatch) -> System.out.println("Event: " + event));
         disruptor.start();
         RingBuffer<LongEvent> ringBuffer = disruptor.getRingBuffer();
-        LongEventProducer producer = new LongEventProducer(ringBuffer);
         ByteBuffer bb = ByteBuffer.allocate(8);
         for (long l = 0; true; l++) {
         	bb.putLong(0, l);
-        	producer.onData(bb);
+        	ringBuffer.publishEvent((event, sequence, buffer) -> event.set(buffer.getLong(0)), bb);
         	Thread.sleep(1000);
         }
     }
